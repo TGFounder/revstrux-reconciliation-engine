@@ -1,34 +1,55 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* RevStrux Global Styles */
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+
+/* Score color bands */
+.score-green { color: #10B981; }
+.score-amber { color: #F59E0B; }
+.score-orange { color: #F97316; }
+.score-red { color: #EF4444; }
+
+.score-bg-green { background-color: #ECFDF5; border-color: #A7F3D0; }
+.score-bg-amber { background-color: #FFFBEB; border-color: #FDE68A; }
+.score-bg-orange { background-color: #FFF7ED; border-color: #FED7AA; }
+.score-bg-red { background-color: #FEF2F2; border-color: #FECACA; }
+
+/* Upload zone styles */
+.upload-zone {
+    @apply border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-200;
+}
+.upload-zone:hover {
+    @apply border-slate-400 bg-slate-50;
+}
+.upload-zone.uploaded {
+    @apply border-emerald-300 bg-emerald-50;
+}
+.upload-zone.optional {
+    @apply border-slate-200 bg-slate-50/50;
 }
 
-.App-link {
-    color: #61dafb;
-}
+/* Variance badges */
+.badge-clean { @apply bg-emerald-50 text-emerald-700 border-emerald-200; }
+.badge-missing { @apply bg-red-50 text-red-700 border-red-200; }
+.badge-under { @apply bg-amber-50 text-amber-700 border-amber-200; }
+.badge-over { @apply bg-blue-50 text-blue-700 border-blue-200; }
+.badge-unpaid { @apply bg-orange-50 text-orange-700 border-orange-200; }
+.badge-unknown { @apply bg-slate-100 text-slate-600 border-slate-200; }
 
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+/* Spinner */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+.spinner {
+    animation: spin 1s linear infinite;
 }
