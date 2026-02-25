@@ -9,6 +9,7 @@ import csv
 import json
 import logging
 import asyncio
+import zipfile
 from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -17,7 +18,8 @@ from datetime import datetime, timezone
 
 from engine import (validate_csv, run_identity_matching, build_rsx_entities,
                     generate_segments, match_invoices, reconcile, calculate_score,
-                    get_template, r2)
+                    get_template, r2, detect_file_type, normalize_headers,
+                    normalize_enums, smart_validate)
 from synthetic import generate_synthetic
 
 ROOT_DIR = Path(__file__).parent
