@@ -38,6 +38,8 @@ export default function DashboardPage() {
   const { coverage, components, revenue_at_risk: rar } = score;
   const colorClass = `score-${score.color}`;
   const bgClass = `score-bg-${score.color}`;
+  const cur = settings?.currency || 'USD';
+  const fmt = (n) => fmtCur(n, cur);
 
   return (
     <TooltipProvider>
