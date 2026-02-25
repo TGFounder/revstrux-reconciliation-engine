@@ -631,9 +631,7 @@ async def generate_synthetic_data():
             'created_at': datetime.now(timezone.utc).isoformat(), 'completed_at': None
         }
 
-        await db.sessions.insert_one({**session})
-        # Remove _id added by motor
-        await db.sessions.update_one({'session_id': sid}, {'$unset': {'_id': ''}})
+        await db.sessions.insert_one(dict(session))
 
         for ft in ['accounts','customers','subscriptions','invoices','payments','credit_notes']:
             rows = data.get(ft, [])
