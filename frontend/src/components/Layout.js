@@ -43,11 +43,9 @@ export default function Layout({ children, sessionId, sessionStatus }) {
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )} data-testid="sidebar">
         <div className="flex items-center gap-2 px-5 py-5 border-b border-slate-800">
-          <div className="w-7 h-7 rounded bg-emerald-500 flex items-center justify-center">
-            <span className="font-heading font-bold text-xs text-white">R</span>
-          </div>
+          <img src="/logo.png" alt="RevStrux" className="w-7 h-7 rounded object-contain" data-testid="sidebar-logo" />
           <span className="font-heading font-bold text-base tracking-tight">RevStrux</span>
-          <span className="text-[10px] text-slate-400 ml-auto">v1.1</span>
+          <span className="text-[10px] text-slate-400 ml-auto">v1.2</span>
         </div>
 
         <ScrollArea className="flex-1 py-3">
