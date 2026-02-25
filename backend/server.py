@@ -68,8 +68,7 @@ async def create_session():
         'processing_status': {'current_step': None, 'steps': {}, 'log': []},
         'created_at': datetime.now(timezone.utc).isoformat(), 'completed_at': None
     }
-    await db.sessions.insert_one({**session, '_id': None})
-    await db.sessions.update_one({'session_id': sid}, {'$unset': {'_id': ''}})
+    await db.sessions.insert_one(dict(session))
     return session
 
 @api.get("/sessions/{session_id}")
