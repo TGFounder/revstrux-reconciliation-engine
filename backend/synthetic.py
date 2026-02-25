@@ -53,20 +53,16 @@ def generate_synthetic():
             'source_system': 'salesforce', 'account_owner': f"Owner {i % 10 + 1}"
         })
 
-    # Anomaly 7: SYNTH-033 -> "TechFlow Inc" (account index 56)
-    accounts[56]['account_id'] = 'SYNTH-033'
-    accounts[56]['account_name'] = 'TechFlow Inc'
+    # Anomaly 7: SYNTH-033 -> fuzzy match name (index 32 = SYNTH-033)
+    accounts[32]['account_name'] = 'TechFlow Inc'
 
-    # Anomaly 8: SYNTH-041 -> "Apex Systems" (account index 57)
-    accounts[57]['account_id'] = 'SYNTH-041'
-    accounts[57]['account_name'] = 'Apex Systems'
+    # Anomaly 8: SYNTH-041 -> fuzzy match name (index 40 = SYNTH-041)
+    accounts[40]['account_name'] = 'Apex Systems'
 
-    # Anomaly 4: SYNTH-019 unmatched (account index 18)
-    accounts[18]['account_id'] = 'SYNTH-019'
+    # Anomaly 4: SYNTH-019 unmatched (index 18 = SYNTH-019)
     accounts[18]['account_name'] = 'Pioneer Digital'
 
-    # Anomaly 5: SYNTH-052 unmatched (account index 51)
-    accounts[51]['account_id'] = 'SYNTH-052'
+    # Anomaly 5: SYNTH-052 unmatched (index 51 = SYNTH-052)
     accounts[51]['account_name'] = 'XenonByte Systems'
 
     # Generate 55 billing customers - match 50 exactly, 2 fuzzy, 3 unmatched billing
