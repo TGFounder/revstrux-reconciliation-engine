@@ -12,9 +12,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertTriangle, Download, ArrowRight, FileWarning, Loader2, Info, ExternalLink } from "lucide-react";
 import { getDashboard, exportReportUrl } from "@/lib/api";
 
-const fmt = (n) => {
-  if (n == null) return '$0';
-  return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+const CURRENCY_SYMBOLS = { USD: '$', GBP: '£', EUR: '€', INR: '₹', AUD: 'A$', CAD: 'C$', SGD: 'S$', AED: 'د.إ', JPY: '¥', CHF: 'CHF ' };
+
+const fmtCur = (n, cur = 'USD') => {
+  if (n == null) return `${CURRENCY_SYMBOLS[cur] || cur}0`;
+  return `${CURRENCY_SYMBOLS[cur] || cur}${Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 };
 const fmtPct = (n) => `${Number(n || 0).toFixed(1)}%`;
 
