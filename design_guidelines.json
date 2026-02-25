@@ -1,0 +1,178 @@
+{
+  "identity": {
+    "name": "RevStrux",
+    "persona": "The Auditor",
+    "vibe": "Uncompromising Precision. Swiss-Style clarity. Data-dense but breathable.",
+    "principles": [
+      "Truth in Data: Visuals never lie or obscure.",
+      "Density with Breath: High information density in tables, generous whitespace in structure.",
+      "The 'Red Pen' approach: Errors (variances) are highlighted boldly; success is quiet.",
+      "Deterministic Flow: UI shows connections clearly (Lineage)."
+    ]
+  },
+  "typography": {
+    "fonts": {
+      "primary": "Manrope",
+      "heading": "Chivo",
+      "mono": "JetBrains Mono"
+    },
+    "weights": {
+      "heading": "800",
+      "body": "400",
+      "medium": "500",
+      "bold": "700"
+    },
+    "usage": {
+      "h1": "text-4xl font-extrabold tracking-tight text-slate-900 font-heading",
+      "h2": "text-2xl font-bold tracking-tight text-slate-900 font-heading",
+      "h3": "text-xl font-semibold text-slate-800 font-heading",
+      "body": "text-sm text-slate-600 font-sans leading-relaxed",
+      "caption": "text-xs text-slate-500 font-sans uppercase tracking-wider",
+      "data_cell": "text-sm font-mono text-slate-700 tabular-nums",
+      "nav_link": "text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
+    },
+    "cdn_links": [
+      "https://fonts.googleapis.com/css2?family=Chivo:wght@400;700;900&family=Manrope:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    ]
+  },
+  "colors": {
+    "theme": "light",
+    "palette": {
+      "background": "#FFFFFF",
+      "surface": "#F8FAFC",
+      "surface_highlight": "#F1F5F9",
+      "border": "#E2E8F0",
+      "primary": "#0F172A",
+      "primary_foreground": "#FFFFFF",
+      "secondary": "#FFFFFF",
+      "secondary_foreground": "#0F172A",
+      "muted": "#F1F5F9",
+      "muted_foreground": "#64748B",
+      "accent": "#F1F5F9",
+      "accent_foreground": "#0F172A",
+      "success": "#10B981",
+      "success_bg": "#ECFDF5",
+      "warning": "#F59E0B",
+      "warning_bg": "#FFFBEB",
+      "error": "#EF4444",
+      "error_bg": "#FEF2F2",
+      "info": "#3B82F6",
+      "info_bg": "#EFF6FF"
+    },
+    "semantic": {
+      "match": "text-emerald-600 bg-emerald-50 border-emerald-200",
+      "variance": "text-red-600 bg-red-50 border-red-200",
+      "review": "text-amber-600 bg-amber-50 border-amber-200",
+      "processing": "text-blue-600 bg-blue-50 border-blue-200"
+    }
+  },
+  "spacing": {
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "section_gap": "gap-8",
+    "component_gap": "gap-4",
+    "table_cell_padding": "px-4 py-3"
+  },
+  "layout": {
+    "grid_system": "Bento Grid Mode B (High Density)",
+    "modes": {
+      "dashboard": "grid grid-cols-1 md:grid-cols-4 gap-6",
+      "detail_view": "grid grid-cols-1 lg:grid-cols-3 gap-8"
+    },
+    "alignment": {
+      "numbers": "text-right font-mono",
+      "text": "text-left",
+      "status": "text-center",
+      "actions": "text-right"
+    }
+  },
+  "visual_enhancers": {
+    "borders": "border border-slate-200 rounded-sm",
+    "shadows": {
+      "card": "shadow-sm hover:shadow-md transition-shadow duration-200",
+      "dropdown": "shadow-lg border border-slate-100",
+      "sticky_header": "shadow-sm border-b border-slate-200"
+    },
+    "textures": {
+      "noise": "bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20",
+      "grid": "bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"
+    },
+    "animations": {
+      "hover_row": "hover:bg-slate-50 transition-colors duration-150",
+      "progress_bar": "transition-all duration-500 ease-out"
+    }
+  },
+  "icons": {
+    "library": "phosphor-icons",
+    "style": "duotone",
+    "installation": "npm install @phosphor-icons/react",
+    "size": {
+      "sm": "16",
+      "md": "20",
+      "lg": "24",
+      "xl": "32"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-slate-900 text-white hover:bg-slate-800 rounded-md px-4 py-2 font-medium text-sm shadow-sm transition-all",
+      "secondary": "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 rounded-md px-4 py-2 font-medium text-sm shadow-sm transition-all",
+      "ghost": "bg-transparent text-slate-600 hover:bg-slate-100 rounded-md px-4 py-2 font-medium text-sm transition-all",
+      "destructive": "bg-red-600 text-white hover:bg-red-700 rounded-md px-4 py-2 font-medium text-sm shadow-sm transition-all"
+    },
+    "inputs": {
+      "base": "flex h-9 w-full rounded-md border border-slate-300 bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-900 disabled:cursor-not-allowed disabled:opacity-50",
+      "error": "border-red-500 focus-visible:ring-red-500"
+    },
+    "cards": {
+      "base": "rounded-lg border border-slate-200 bg-white text-slate-950 shadow-sm",
+      "header": "flex flex-col space-y-1.5 p-6",
+      "content": "p-6 pt-0"
+    },
+    "tables": {
+      "wrapper": "relative w-full overflow-auto rounded-md border border-slate-200",
+      "header_row": "border-b transition-colors hover:bg-slate-100/50 data-[state=selected]:bg-slate-100",
+      "row": "border-b transition-colors hover:bg-slate-50 data-[state=selected]:bg-slate-100",
+      "head_cell": "h-10 px-4 text-left align-middle font-medium text-slate-500 [&:has([role=checkbox])]:pr-0",
+      "cell": "p-4 align-middle [&:has([role=checkbox])]:pr-0 font-mono text-sm"
+    }
+  },
+  "images": {
+    "login_bg": {
+      "url": "https://images.unsplash.com/photo-1768101225267-c6fc5678c113?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Modern Glass Skyscrapers",
+      "description": "Background for Login/Signup pages. Suggests transparency and structure."
+    },
+    "upload_empty": {
+      "url": "https://images.unsplash.com/photo-1537655949728-d4e1c7c7bf90?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Organized Desk",
+      "description": "Empty state for the Upload section. Suggests readiness."
+    }
+  },
+  "libraries": {
+    "charts": "Recharts (via Shadcn)",
+    "lineage_view": "React Flow",
+    "tables": "TanStack Table (via Shadcn)",
+    "forms": "React Hook Form + Zod",
+    "date": "date-fns"
+  },
+  "universal_guidelines": [
+    "NEVER use gradients for text.",
+    "ALWAYS use 'tabular-nums' for any number displayed in a table or metric.",
+    "Use 'Sonner' for all toast notifications.",
+    "Input fields must have clear labels and placeholder text.",
+    "Empty states must include an illustration (from the image list) and a clear CTA.",
+    "All interactive elements MUST have a 'data-testid' attribute.",
+    "Do not use generic 'Inter' font for headings; use 'Chivo'.",
+    "Lineage view must be deterministic and use orthogonal edges.",
+    "Tables must support sorting and filtering."
+  ],
+  "instructions_to_main_agent": {
+    "step_1": "Install dependencies: @phosphor-icons/react react-flow-renderer recharts clsx tailwind-merge cva",
+    "step_2": "Configure Tailwind with the custom colors and fonts (Chivo, Manrope, JetBrains Mono).",
+    "step_3": "Create the Layout shell (Sidebar + Header + Main Content Area).",
+    "step_4": "Build the 'Upload' page with the drag-and-drop zone.",
+    "step_5": "Build the 'Accounts' table with sorting/filtering.",
+    "step_6": "Implement the 'Lineage' view using React Flow.",
+    "step_7": "Build the Dashboard with Scorecards and Charts."
+  }
+}
