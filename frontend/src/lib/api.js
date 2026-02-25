@@ -10,7 +10,7 @@ export const createSession = () => api.post('/sessions').then(r => r.data);
 export const getSession = (sid) => api.get(`/sessions/${sid}`).then(r => r.data);
 export const updateSettings = (sid, settings) => api.put(`/sessions/${sid}/settings`, settings).then(r => r.data);
 
-// Upload
+// Upload (legacy single-file)
 export const uploadFile = (sid, fileType, file) => {
     const fd = new FormData();
     fd.append('file', file);
@@ -19,8 +19,18 @@ export const uploadFile = (sid, fileType, file) => {
     }).then(r => r.data);
 };
 
+// Smart Upload (multi-file / ZIP)
+export const smartUpload = (sid, files) => {
+    const fd = new FormData();
+    files.forEach(f => fd.append('files', f));
+    return api.post(`/sessions/${sid}/smart-upload`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }).then(r => r.data);
+};
+
 // Validation
 export const validateFiles = (sid) => api.post(`/sessions/${sid}/validate`).then(r => r.data);
+export const smartValidate = (sid) => api.post(`/sessions/${sid}/smart-validate`).then(r => r.data);
 
 // Identity
 export const getIdentity = (sid) => api.get(`/sessions/${sid}/identity`).then(r => r.data);
