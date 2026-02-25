@@ -45,6 +45,280 @@ ID_FIELDS = {
 }
 
 # =============================================================================
+# SMART INGESTION: Header Aliases, File Detection, Enum Normalization
+# =============================================================================
+HEADER_ALIASES = {
+    'account_id': ['acct_id', 'sf_account_id', 'account_identifier', 'acc_id', 'accountid'],
+    'account_name': ['acct_name', 'company_name', 'company', 'account'],
+    'account_status': ['acct_status'],
+    'account_owner': ['owner', 'acct_owner', 'rep', 'sales_rep'],
+    'customer_id': ['cust_id', 'billing_id', 'customer_identifier', 'stripe_id', 'customerid'],
+    'customer_name': ['cust_name', 'billing_name', 'customer'],
+    'customer_status': ['cust_status'],
+    'billing_email': ['email', 'billing_contact', 'contact_email'],
+    'sub_id': ['subscription_id', 'sub_identifier', 'plan_id', 'subid'],
+    'start_date': ['sub_start', 'subscription_start', 'start', 'effective_date', 'begin_date'],
+    'end_date': ['sub_end', 'subscription_end', 'end', 'expiry', 'expiry_date', 'termination_date'],
+    'mrr': ['monthly_revenue', 'monthly_amount', 'recurring_amount', 'monthly_recurring_revenue'],
+    'billing_frequency': ['frequency', 'billing_cycle', 'billing_period', 'cycle'],
+    'pricing_model': ['model', 'pricing', 'price_model', 'pricing_type'],
+    'sub_status': ['subscription_status'],
+    'ramp_schedule': ['ramp', 'schedule'],
+    'invoice_id': ['inv_id', 'invoice_number', 'invoice_no', 'inv_no', 'invoiceid'],
+    'invoice_date': ['inv_date', 'created_date', 'issue_date_inv'],
+    'period_start': ['billing_start', 'from_date', 'service_start', 'billing_period_start'],
+    'period_end': ['billing_end', 'to_date', 'service_end', 'billing_period_end'],
+    'amount': ['total', 'invoice_amount', 'inv_amount', 'total_amount', 'line_total', 'net_amount'],
+    'payment_id': ['pay_id', 'pmt_id', 'transaction_id', 'txn_id', 'paymentid'],
+    'payment_date': ['pay_date', 'settled_date', 'transaction_date', 'pmt_date'],
+    'payment_method': ['method', 'type', 'pay_method', 'pmt_method'],
+    'credit_note_id': ['cn_id', 'credit_id', 'memo_id', 'refund_id', 'creditnoteid'],
+    'issue_date': ['cn_date', 'credit_date', 'refund_date'],
+    'reason': ['description', 'memo', 'note', 'credit_reason'],
+}
+
+# Build reverse alias map: alias -> canonical
+_REVERSE_ALIASES = {}
+for canonical, aliases in HEADER_ALIASES.items():
+    for alias in aliases:
+        _REVERSE_ALIASES[alias] = canonical
+
+FILE_TYPE_SIGNATURES = {
+    'accounts': {'strong': {'account_id', 'account_name'}, 'supporting': {'account_status', 'account_owner', 'source_system'}},
+    'customers': {'strong': {'customer_id', 'customer_name'}, 'supporting': {'customer_status', 'billing_email', 'source_system'}},
+    'subscriptions': {'strong': {'sub_id', 'mrr'}, 'supporting': {'start_date', 'billing_frequency', 'pricing_model', 'sub_status'}},
+    'invoices': {'strong': {'invoice_id', 'invoice_date'}, 'supporting': {'period_start', 'period_end', 'amount', 'currency'}},
+    'payments': {'strong': {'payment_id', 'invoice_id'}, 'supporting': {'payment_date', 'payment_method', 'amount'}},
+    'credit_notes': {'strong': {'credit_note_id'}, 'supporting': {'issue_date', 'reason', 'amount', 'customer_id'}},
+}
+
+ENUM_ALIASES = {
+    'status': {
+        'posted': 'unpaid', 'pending': 'unpaid', 'open': 'unpaid', 'outstanding': 'unpaid', 'overdue': 'unpaid',
+        'settled': 'paid', 'complete': 'paid', 'completed': 'paid', 'cleared': 'paid', 'collected': 'paid',
+        'cancelled': 'void', 'canceled': 'void', 'reversed': 'void', 'deleted': 'void', 'refunded': 'void',
+        'pending_review': 'draft', 'in_progress': 'draft', 'provisional': 'draft',
+    },
+    'account_status': {
+        'inactive': 'churned', 'lost': 'churned', 'closed': 'churned', 'terminated': 'churned',
+        'lead': 'prospect', 'opportunity': 'prospect', 'trial': 'prospect',
+        'current': 'active', 'enabled': 'active', 'live': 'active',
+    },
+    'customer_status': {
+        'inactive': 'cancelled', 'terminated': 'cancelled', 'closed': 'cancelled',
+        'frozen': 'paused', 'suspended': 'paused', 'on_hold': 'paused',
+        'current': 'active', 'enabled': 'active', 'live': 'active',
+    },
+    'sub_status': {
+        'terminated': 'cancelled', 'ended': 'expired', 'lapsed': 'expired',
+        'frozen': 'paused', 'suspended': 'paused', 'on_hold': 'paused',
+        'current': 'active', 'enabled': 'active', 'live': 'active',
+    },
+}
+
+# Minimum required fields for soft validation (blocking only if ALL missing)
+MINIMUM_REQUIRED = {
+    'accounts': ['account_id', 'account_name'],
+    'customers': ['customer_id', 'customer_name'],
+    'subscriptions': ['customer_id', 'start_date', 'mrr'],
+    'invoices': ['invoice_id', 'amount'],
+    'payments': ['payment_id', 'invoice_id', 'amount'],
+    'credit_notes': ['credit_note_id', 'customer_id', 'amount'],
+}
+
+def _normalize_header_key(h):
+    """Normalize a header string: lowercase, strip, underscores."""
+    return re.sub(r'[\s\-]+', '_', str(h).lower().strip())
+
+def detect_file_type(headers):
+    """Detect file type from CSV headers. Returns (file_type, confidence, matched_headers)."""
+    norm_headers = {_normalize_header_key(h) for h in headers}
+    # Also resolve aliases
+    resolved = set()
+    alias_applied = {}
+    for h in norm_headers:
+        if h in _REVERSE_ALIASES:
+            canonical = _REVERSE_ALIASES[h]
+            resolved.add(canonical)
+            alias_applied[h] = canonical
+        else:
+            resolved.add(h)
+
+    best_type, best_score, best_detail = None, -1, {}
+    for ft, sig in FILE_TYPE_SIGNATURES.items():
+        strong_match = len(sig['strong'] & resolved)
+        support_match = len(sig['supporting'] & resolved)
+        score = strong_match * 10 + support_match
+        if strong_match >= 1 and score > best_score:
+            best_type = ft
+            best_score = score
+            best_detail = {'strong': strong_match, 'supporting': support_match, 'total': len(sig['strong']) + len(sig['supporting'])}
+
+    if best_type:
+        confidence = min(1.0, (best_detail['strong'] * 10 + best_detail['supporting']) / (len(FILE_TYPE_SIGNATURES[best_type]['strong']) * 10 + len(FILE_TYPE_SIGNATURES[best_type]['supporting'])))
+    else:
+        confidence = 0
+    return best_type, round(confidence, 2), alias_applied
+
+def normalize_headers(rows):
+    """Normalize all headers in rows using alias mapping. Returns (normalized_rows, applied_mappings)."""
+    if not rows:
+        return rows, []
+    original_headers = list(rows[0].keys())
+    mappings = []
+    header_map = {}
+    for h in original_headers:
+        norm = _normalize_header_key(h)
+        canonical = _REVERSE_ALIASES.get(norm, norm)
+        header_map[h] = canonical
+        if canonical != norm:
+            mappings.append({'original': h, 'normalized': canonical, 'type': 'alias'})
+        elif h != norm:
+            mappings.append({'original': h, 'normalized': canonical, 'type': 'format'})
+
+    normalized_rows = []
+    for row in rows:
+        new_row = {}
+        for orig_h, value in row.items():
+            new_row[header_map.get(orig_h, orig_h)] = value
+        normalized_rows.append(new_row)
+    return normalized_rows, mappings
+
+def normalize_enums(file_type, rows):
+    """Normalize enum values. Returns (rows, normalizations_applied)."""
+    normalizations = []
+    # Determine which enum fields to check
+    enum_fields = {}
+    if file_type == 'accounts':
+        enum_fields['account_status'] = ENUM_ALIASES.get('account_status', {})
+    elif file_type == 'customers':
+        enum_fields['customer_status'] = ENUM_ALIASES.get('customer_status', {})
+    elif file_type == 'subscriptions':
+        enum_fields['sub_status'] = ENUM_ALIASES.get('sub_status', {})
+    elif file_type == 'invoices':
+        enum_fields['status'] = ENUM_ALIASES.get('status', {})
+
+    for row in rows:
+        for field, alias_map in enum_fields.items():
+            val = str(row.get(field, '')).lower().strip()
+            if val in alias_map:
+                new_val = alias_map[val]
+                normalizations.append({'field': field, 'original': row.get(field, ''), 'normalized': new_val})
+                row[field] = new_val
+    return rows, normalizations
+
+def smart_validate(file_type, rows):
+    """Soft validation: warnings for non-critical issues, errors only for showstoppers."""
+    errors, warnings = [], []
+    if not rows:
+        if file_type in ['credit_notes', 'payments']:
+            warnings.append({'file': file_type, 'row': 0, 'field': '', 'message': f'No {file_type} data. Analysis will proceed without it.'})
+            return {'valid': True, 'errors': [], 'warnings': warnings}
+        errors.append({'file': file_type, 'row': 0, 'field': '', 'message': f'No data rows found for {file_type}.'})
+        return {'valid': False, 'errors': errors, 'warnings': warnings}
+
+    headers = set(rows[0].keys())
+    min_req = MINIMUM_REQUIRED.get(file_type, [])
+
+    # Check minimum required headers
+    missing_critical = [f for f in min_req if f not in headers]
+    if missing_critical:
+        # Check if we can find them via alias
+        still_missing = []
+        for f in missing_critical:
+            found = False
+            for h in headers:
+                if _normalize_header_key(h) in HEADER_ALIASES.get(f, []):
+                    found = True
+                    break
+            if not found:
+                still_missing.append(f)
+        if still_missing:
+            errors.append({'file': file_type, 'row': 0, 'field': ', '.join(still_missing),
+                          'message': f"Missing critical columns: {', '.join(still_missing)}"})
+
+    # Check for optional columns that are missing
+    full_required = REQUIRED_FIELDS.get(file_type, [])
+    optional_missing = [f for f in full_required if f not in headers and f not in min_req]
+    for f in optional_missing:
+        warnings.append({'file': file_type, 'row': 0, 'field': f,
+                        'message': f"Optional column '{f}' not found. Defaults will be applied."})
+
+    # Validate dates are parseable (blocking error only if no dates parse at all)
+    date_fields = []
+    if file_type == 'subscriptions':
+        date_fields = ['start_date']
+    elif file_type == 'invoices':
+        date_fields = ['invoice_date']
+    elif file_type == 'payments':
+        date_fields = ['payment_date']
+
+    for df in date_fields:
+        if df in headers:
+            unparseable = sum(1 for r in rows if r.get(df) and parse_date(r[df]) is None)
+            if unparseable == len(rows):
+                errors.append({'file': file_type, 'row': 0, 'field': df,
+                              'message': f'No parseable dates found in {df}. Use YYYY-MM-DD format.'})
+            elif unparseable > 0:
+                warnings.append({'file': file_type, 'row': 0, 'field': df,
+                                'message': f'{unparseable} row(s) have unparseable dates in {df}. These rows will be skipped.'})
+
+    # Check amounts are numeric (blocking if none are numeric)
+    if file_type in ['subscriptions', 'invoices', 'payments', 'credit_notes']:
+        amt_field = 'mrr' if file_type == 'subscriptions' else 'amount'
+        if amt_field in headers:
+            non_numeric = 0
+            for r in rows:
+                try:
+                    float(r.get(amt_field, 0))
+                except (ValueError, TypeError):
+                    non_numeric += 1
+            if non_numeric == len(rows):
+                errors.append({'file': file_type, 'row': 0, 'field': amt_field,
+                              'message': f'No valid monetary amounts found in {amt_field}.'})
+            elif non_numeric > 0:
+                warnings.append({'file': file_type, 'row': 0, 'field': amt_field,
+                                'message': f'{non_numeric} row(s) have invalid amounts. These will be treated as 0.'})
+
+    # Check for unknown enum values (warning only)
+    enum_check = {}
+    if file_type == 'accounts' and 'account_status' in headers:
+        enum_check['account_status'] = VALID_ACCOUNT_STATUSES
+    elif file_type == 'customers' and 'customer_status' in headers:
+        enum_check['customer_status'] = VALID_CUSTOMER_STATUSES
+    elif file_type == 'subscriptions' and 'sub_status' in headers:
+        enum_check['sub_status'] = VALID_SUB_STATUSES
+    elif file_type == 'invoices' and 'status' in headers:
+        enum_check['status'] = VALID_INVOICE_STATUSES
+
+    for field, valid_vals in enum_check.items():
+        unknown = set()
+        for r in rows:
+            v = str(r.get(field, '')).strip()
+            if v and v not in valid_vals:
+                unknown.add(v)
+        if unknown:
+            warnings.append({'file': file_type, 'row': 0, 'field': field,
+                            'message': f"Unknown values after normalization: {', '.join(list(unknown)[:5])}. Safest default will be applied."})
+
+    # Duplicate ID check (warning, not blocking)
+    pk = ID_FIELDS.get(file_type)
+    if pk and pk in headers:
+        seen = set()
+        dupes = 0
+        for r in rows:
+            v = r.get(pk)
+            if v and v in seen:
+                dupes += 1
+            if v:
+                seen.add(v)
+        if dupes > 0:
+            warnings.append({'file': file_type, 'row': 0, 'field': pk,
+                            'message': f'{dupes} duplicate {pk} value(s) found.'})
+
+    return {'valid': len(errors) == 0, 'errors': errors, 'warnings': warnings}
+
+# =============================================================================
 # HELPERS
 # =============================================================================
 def r2(v):
