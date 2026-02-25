@@ -110,6 +110,141 @@ async def upload_file(session_id: str, file_type: str, file: UploadFile = File(.
     return {"file_type": file_type, "rows": len(rows), "filename": file.filename}
 
 # =============================================================================
+# SMART UPLOAD ENDPOINT
+# =============================================================================
+def _process_csv_bytes(content_bytes, filename):
+    """Parse CSV bytes into rows, detect type, normalize headers/enums."""
+    try:
+        text = content_bytes.decode('utf-8')
+    except UnicodeDecodeError:
+        try:
+            text = content_bytes.decode('latin-1')
+        except Exception:
+            return {'filename': filename, 'error': 'Unreadable file encoding. Save as UTF-8 CSV.'}
+
+    reader = csv.DictReader(io.StringIO(text))
+    rows = [dict(row) for row in reader]
+    if not rows:
+        return {'filename': filename, 'error': 'No data rows found.'}
+
+    headers = list(rows[0].keys())
+    file_type, confidence, alias_applied = detect_file_type(headers)
+    norm_rows, header_mappings = normalize_headers(rows)
+
+    enum_normalizations = []
+    if file_type:
+        norm_rows, enum_normalizations = normalize_enums(file_type, norm_rows)
+
+    validation = smart_validate(file_type, norm_rows) if file_type else {
+        'valid': False, 'errors': [{'file': filename, 'row': 0, 'field': '',
+                                     'message': 'Could not auto-detect file type from headers.'}], 'warnings': []}
+
+    return {
+        'filename': filename,
+        'detected_type': file_type,
+        'confidence': confidence,
+        'rows': len(norm_rows),
+        'original_headers': headers,
+        'header_mappings': header_mappings[:30],
+        'enum_normalizations': enum_normalizations[:30],
+        'validation': validation,
+        'data': norm_rows if file_type else None,
+    }
+
+
+@api.post("/sessions/{session_id}/smart-upload")
+async def smart_upload(session_id: str, files: List[UploadFile] = File(...)):
+    session = await get_session(session_id)
+    if not session:
+        return {"error": "Session not found"}
+
+    file_results = []
+    for uploaded in files:
+        raw = await uploaded.read()
+
+        if uploaded.filename.lower().endswith('.zip'):
+            try:
+                with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+                    for name in zf.namelist():
+                        if name.lower().endswith('.csv') and not name.startswith('__MACOSX'):
+                            csv_bytes = zf.read(name)
+                            result = _process_csv_bytes(csv_bytes, name.split('/')[-1])
+                            file_results.append(result)
+            except zipfile.BadZipFile:
+                file_results.append({'filename': uploaded.filename, 'error': 'Invalid ZIP file.'})
+        elif uploaded.filename.lower().endswith('.csv'):
+            result = _process_csv_bytes(raw, uploaded.filename)
+            file_results.append(result)
+        else:
+            file_results.append({'filename': uploaded.filename, 'error': 'Unsupported file format. Use .csv or .zip.'})
+
+    # Store successfully detected files
+    stored_types = []
+    for result in file_results:
+        ft = result.get('detected_type')
+        data = result.pop('data', None)
+        if ft and data and result.get('validation', {}).get('valid', False):
+            await set_data(session_id, f'raw_{ft}', data)
+            await update_session(session_id, {
+                f'upload_status.{ft}': {'uploaded': True, 'rows': len(data), 'filename': result['filename']}
+            })
+            stored_types.append(ft)
+        elif ft and data:
+            # Store even with warnings (soft validation means we proceed)
+            has_blocking = any(e for e in result.get('validation', {}).get('errors', []))
+            if not has_blocking:
+                await set_data(session_id, f'raw_{ft}', data)
+                await update_session(session_id, {
+                    f'upload_status.{ft}': {'uploaded': True, 'rows': len(data), 'filename': result['filename']}
+                })
+                stored_types.append(ft)
+
+    return {'results': file_results, 'stored_types': stored_types}
+
+
+@api.post("/sessions/{session_id}/smart-validate")
+async def smart_validate_endpoint(session_id: str):
+    """Soft validation + identity matching for smart upload flow."""
+    session = await get_session(session_id)
+    if not session:
+        return {"error": "Session not found"}
+
+    all_errors, all_warnings = [], []
+    for ft in ['accounts', 'customers', 'subscriptions', 'invoices', 'payments', 'credit_notes']:
+        if not session['upload_status'].get(ft, {}).get('uploaded'):
+            if ft in ('credit_notes', 'payments'):
+                all_warnings.append({'file': ft, 'row': 0, 'field': '',
+                                     'message': f'{ft} not uploaded. Analysis will proceed without it.'})
+                continue
+            all_errors.append({'file': ft, 'row': 0, 'field': '',
+                              'message': f'{ft} is required but not uploaded.'})
+            continue
+        rows = await get_data(session_id, f'raw_{ft}')
+        result = smart_validate(ft, rows)
+        all_errors.extend(result['errors'])
+        all_warnings.extend(result['warnings'])
+
+    valid = len(all_errors) == 0
+    vr = {'valid': valid, 'errors': all_errors, 'warnings': all_warnings}
+    new_status = 'validated' if valid else 'created'
+    await update_session(session_id, {'validation_result': vr, 'status': new_status})
+
+    if valid:
+        accounts = await get_data(session_id, 'raw_accounts')
+        customers = await get_data(session_id, 'raw_customers')
+        identity = run_identity_matching(accounts, customers)
+        await update_session(session_id, {'identity_result': identity, 'status': 'identity_review'})
+        return {**vr, 'identity_summary': {
+            'auto_matched': len(identity['auto_matched']),
+            'needs_review': len(identity['needs_review']),
+            'unmatched_accounts': len(identity['unmatched_accounts']),
+            'unmatched_customers': len(identity['unmatched_customers'])
+        }}
+
+    return vr
+
+
+# =============================================================================
 # VALIDATION ENDPOINT
 # =============================================================================
 @api.post("/sessions/{session_id}/validate")
